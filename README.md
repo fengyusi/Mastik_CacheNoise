@@ -1,3 +1,26 @@
+# Mastik_CacheNoise
+
+## About
+
+The cache is a vital shared resource between programs. Many frameworks simulate cache designs, such as Gem5(https://www.gem5.org/) and CacheFX(https://cs.adelaide.edu.au/~yval/pdfs/GenkinKLTUY22.pdf).
+
+However, these frameworks only simulate cache changes caused by specific programs. This simulation is not realistic enough because many processes running concurrently with these specific programs result in extra memory accesses. We call these memory accesses cache noise.
+
+We exploited Mastik, a micro-architectural side-channel toolkit, to collect cache noise on Linux machines in this project. 
+
+We add two programs, demo/L3-CollectCacheNoise.c and L3-ComputeNoiseTime.c. And we run these programs without any other programs running except for system programs.
+
+L3-CollectCacheNoise.c
+This file collects cache noise from Linux systems. It probes every 64 sets continuously and repeatedly (with gaps of 64 sets to avoid data prefetching), and uses set i to represent the actual set i*64. It probes each set for SAMPLES*10(10010*10) times and prints the results - (set, miss number of this set) into text and CSV files. CSV files are used for more visual observation, and text files are used for easier use by further exploitation.
+ 
+L3-ComputeNoiseTime.c
+Adding an array to record each probe's time (cycles) would take up large memory space, and accessing these memory spaces would cause a lot of extra noise. We found that the time between each probe was easy to measure and calculate. This program is used to calculate the noise time between each probe situation.
+
+Noise data is stored in /NoiseData.
+
+The following are Mastik's readme.
+*********************************
+
 # Mastik: A Micro-Architectural Side-Channel Toolkit
 
 ## About

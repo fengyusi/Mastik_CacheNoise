@@ -51,6 +51,7 @@ void lx_bprobecount(lxpp_t lx, uint16_t *results);
 
 int lx_repeatedprobe(lxpp_t lx, int nrecords, uint16_t *results, int slot);
 int lx_repeatedprobecount(lxpp_t lx, int nrecords, uint16_t *results, int slot);
+int lx_repeatedprobecountTime(lxpp_t lx, int nrecords, uint16_t *results, uint64_t *time, int slot);
 
 void lx_randomise(lxpp_t lx);
 int lx_getmonitoredset(lxpp_t lx, int *lines, int nlines); 

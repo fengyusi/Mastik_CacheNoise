@@ -1,0 +1,12 @@
+Miss number of a probe: 0, Time this probe takes(cycles): 835, Counts: 93628
+Miss number of a probe: 1, Time this probe takes(cycles): 1296, Counts: 260
+Miss number of a probe: 2, Time this probe takes(cycles): 1258, Counts: 617
+Miss number of a probe: 3, Time this probe takes(cycles): 1843, Counts: 220
+Miss number of a probe: 4, Time this probe takes(cycles): 1657, Counts: 95
+Miss number of a probe: 5, Time this probe takes(cycles): 2221, Counts: 71
+Miss number of a probe: 6, Time this probe takes(cycles): 3140, Counts: 48
+Miss number of a probe: 7, Time this probe takes(cycles): 2160, Counts: 27
+Miss number of a probe: 8, Time this probe takes(cycles): 2456, Counts: 22
+Miss number of a probe: 9, Time this probe takes(cycles): 2708, Counts: 7
+Miss number of a probe: 10, Time this probe takes(cycles): 2673, Counts: 3
+Miss number of a probe: 11, Time this probe takes(cycles): 2990, Counts: 2

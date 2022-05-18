@@ -106,6 +106,40 @@ void lx_bprobecount(lxpp_t lx, uint16_t *results) {
     results[i] = bprobecount(lx->monitoredhead[i]);
 }
 
+int probecountTime(void *pp, uint64_t *time) {
+  if (pp == NULL)
+    return 0;
+  int rv = 0;
+  void *p = (void *)pp;
+  do {
+    uint32_t s = rdtscp();
+    p = LNEXT(p);
+    s = rdtscp() - s;
+    if (s > L3_THRESHOLD)
+      rv++;
+  } while (p != (void *) pp);
+  time[0] = rdtscp();
+  return rv;
+}
+
+int bprobecountTime(void *pp, uint64_t *time) {
+  if (pp == NULL)
+    return 0;
+  return probecountTime(NEXTPTR(pp), time);
+}
+
+void lx_probecountTime(lxpp_t lx, uint16_t *results, uint64_t
+ *time) {
+  for (int i = 0; i < lx->nmonitored; i++, time++)
+    results[i] = probecountTime(lx->monitoredhead[i], time);
+}
+
+void lx_bprobecountTime(lxpp_t lx, uint16_t *results, uint64_t
+ *time) {
+  for (int i = 0; i < lx->nmonitored; i++, time++)
+    results[i] = bprobecountTime(lx->monitoredhead[i], time);
+}
+
 int lx_repeatedprobe(lxpp_t lx, int nrecords, uint16_t *results, int slot) {
   assert(lx != NULL);
   assert(results != NULL);
@@ -158,6 +192,41 @@ int lx_repeatedprobecount(lxpp_t lx, int nrecords, uint16_t *results, int slot) 
 	lx_probecount(lx, results);
       else
 	lx_bprobecount(lx, results);
+      even = !even;
+    }
+    if (slot > 0) {
+      prev_time += slot;
+      missed = slotwait(prev_time);
+    }
+  }
+  return nrecords;
+}
+
+int lx_repeatedprobecountTime(lxpp_t lx, int nrecords, uint16_t *results, uint64_t *time, int slot) {
+  assert(lx != NULL);
+  assert(results != NULL);
+  assert(time != NULL);
+
+  if (nrecords == 0)
+    return 0;
+
+  int len = lx->nmonitored;
+
+  int even = 1;
+  int missed = 0;
+  uint64_t prev_time = rdtscp64();
+  for (int i = 0; i < nrecords; i++, results+=len, time+=len) {
+    if (missed) {
+      for (int j = 0; j < len; j++){
+	results[j] = -1;
+  time[j] = -1;
+      }
+
+    } else {
+      if (even)
+	lx_probecountTime(lx, results, time);
+      else
+	lx_bprobecountTime(lx, results, time);
       even = !even;
     }
     if (slot > 0) {

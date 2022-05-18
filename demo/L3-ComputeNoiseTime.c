@@ -1,9 +1,8 @@
-/* This file collects cache noise from Linux systems. It probes every 64 sets
- * continuously and repeatedly (with gaps of 64 sets to avoid data prefetching),
- * and uses set i to represent the actual set i*64. It probes each set for 
- * SAMPLES*10(10010*10) times and prints the results - (set, miss number of this 
- * set) into text and CSV files. CSV files are used for more visual observation, 
- * and text files are used for easier use by further exploitation.
+/** Adding an array to record each probe's time (cycles) would take up large 
+ * memory space, and accessing these memory spaces would cause a lot of extra 
+ * noise. We found that the time between each probe was easy to measure and 
+ * calculate. This program is used to calculate the noise time between each 
+ * probe situation.
  */
 
 #include <stdio.h>
@@ -17,19 +16,25 @@
 
 int main(int ac, char **av)
 {
-    FILE *fpCsv = fopen("NoiseData/L3-NoiseData.csv", "a+");
+    FILE *fpCsv = fopen("NoiseData/L3-TimeData.csv", "w");
     if (fpCsv == NULL)
     {
         return 0;
     }
 
-    FILE *fpTxt = fopen("NoiseData/L3-NoiseData.txt", "a+");
+    FILE *fpTxt = fopen("NoiseData/L3-TimeData.txt", "w");
     if (fpTxt == NULL)
     {
         return 0;
     }
 
-    int Round = 10;
+    FILE *fpTime = fopen("NoiseData/L3-Time.txt", "w");
+    if (fpTxt == NULL)
+    {
+        return 0;
+    }
+
+    int Round = 1;
     for (int i = 0; i < Round; i++)
     {
         delayloop(3000000000U);
@@ -37,9 +42,23 @@ int main(int ac, char **av)
         l3pp_t l3 = l3_prepare(NULL, NULL);
 
         int nsets = l3_getSets(l3);
+        int associativity = l3_getAssociativity(l3);
+        int probeTime[associativity];
+        int count[associativity];
+        int filteredSets[nsets/64];
+        for (size_t i = 0; i < associativity; i++)
+        {
+            probeTime[i] = 0;
+            count[i] = 0;
+        }
+        for (size_t i = 0; i < nsets/64; i++)
+        {
+            filteredSets[i] = 0;
+        }
         // make sure l3_getSets function returns the right result
         /*
-        if(nsets != 8192){
+        if (nsets != 8192)
+        {
             i--;
             continue;
         }
@@ -53,11 +72,14 @@ int main(int ac, char **av)
             l3_monitor(l3, i);
 
         uint16_t *res = calloc(SAMPLES * nmonitored, sizeof(uint16_t));
+        uint64_t *time = calloc(SAMPLES * nmonitored, sizeof(uint64_t));
         for (int i = 0; i < SAMPLES * nmonitored; i += 4096 / sizeof(uint16_t))
             res[i] = 1;
+        for (int i = 0; i < SAMPLES * nmonitored; i += 4096 / sizeof(uint64_t))
+            time[i] = 1;
 
         // Repeatedly probe sets
-        l3_repeatedprobecount(l3, SAMPLES, res, 0);
+        l3_repeatedprobecountTime(l3, SAMPLES, res, time, 0);
 
         fprintf(fpCsv, "*****************%d*****************\n", i);
         fprintf(fpCsv, " ,");
@@ -80,6 +102,7 @@ int main(int ac, char **av)
                 for (int j = 10; j < SAMPLES; j++)
                 {
                     res[j * nmonitored + i] = 0;
+                    filteredSets[i] = 1;
                 }
             }
         }
@@ -88,21 +111,27 @@ int main(int ac, char **av)
         for (int i = 10; i < SAMPLES; i++)
         {
 
-            printf("Round %d: ", i);
+            //printf("Round %d: ", i);
             fprintf(fpCsv, "Round %d,", i);
             int total = 0;
             for (int j = 0; j < nmonitored - 1; j++)
             {
-                printf("(%d,%d) ", j, res[i * nmonitored + j]);
+                if (filteredSets[j+1] == 0)
+                {
+                    probeTime[res[i * nmonitored + j+1]] = (count[res[i * nmonitored + j+1]] * probeTime[res[i * nmonitored + j+1]] + time[i * nmonitored + j+1] - time[i * nmonitored + j]) / (count[res[i * nmonitored + j+1]] + 1);
+                    count[res[i * nmonitored + j+1]]++;
+                }
+                
+                //printf("(%d,%d) ", j, res[i * nmonitored + j]);
                 fprintf(fpCsv, "%d,", res[i * nmonitored + j]);
-                fprintf(fpTxt, "%d,", res[i * nmonitored + j]);
+                fprintf(fpTxt, "(%d,%ld), ", res[i * nmonitored + j], time[i * nmonitored + j]);
                 total += res[i * nmonitored + j];
             }
-
+            
             int j = nmonitored - 1;
-            printf("(%d,%d) ", j, res[i * nmonitored + j]);
+            //printf("(%d,%d) ", j, res[i * nmonitored + j]);
             fprintf(fpCsv, "%d,", res[i * nmonitored + j]);
-            fprintf(fpTxt, "%d\n", res[i * nmonitored + j]);
+            fprintf(fpTxt, "(%d,%ld)\n", res[i * nmonitored + j], time[i * nmonitored + j]);
             total += res[i * nmonitored + j];
             fprintf(fpCsv, "%d\n", total);
         }
@@ -127,6 +156,12 @@ int main(int ac, char **av)
         fprintf(fpCsv, "%d\n", SetTotal);
         putchar('\n');
         fprintf(fpCsv, "\n\n");
+
+
+        for (size_t i = 0; i < associativity; i++)
+        {
+            fprintf(fpTime, "Miss number of a probe: %d, Time this probe takes(cycles): %d, Counts: %d\n", i, probeTime[i], count[i]);
+        }
 
         free(res);
         l3_release(l3);

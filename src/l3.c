@@ -246,6 +246,10 @@ int l3_repeatedprobecount(l3pp_t l3, int nrecords, uint16_t *results, int slot) 
   return lx_repeatedprobecount((lxpp_t) l3, nrecords, results, slot);
 }
 
+int l3_repeatedprobecountTime(l3pp_t l3, int nrecords, uint16_t *results, uint64_t *time, int slot) {
+  return lx_repeatedprobecountTime((lxpp_t) l3, nrecords, results, time, slot);
+}
+
 void l3_pa_prime(l3pp_t l3) {
   for (int i = 0; i < l3->nmonitored; i++) {
     int t = probetime(l3->monitoredhead[i]);
